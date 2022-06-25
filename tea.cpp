@@ -1702,7 +1702,7 @@ void CTEA::file_find_obsolete_paths()
 
   for (int i = 0; i < l_bookmarks.size(); i++)
       {
-       QStringList t = l_bookmarks[i].split (",");
+       QStringList t = l_bookmarks[i].split ("*");
        if (! file_exists (t[0]))
           l_bookmarks[i] = "#" + l_bookmarks[i]; //comment out the bookmark line
       }
@@ -6201,7 +6201,7 @@ CTEA::CTEA()
   documents->main_tab_widget = main_tab_widget;
 
   documents->menu_recent = menu_file_recent;
-  documents->recent_list_fname = dir_config + "/tea_recent";
+  documents->recent_list_fname = dir_config + "/recentfiles";
   documents->reload_recent_list();
   documents->update_recent_menu();
   documents->log = log;
@@ -6285,7 +6285,7 @@ CTEA::CTEA()
 
   setAcceptDrops (true);
 
-  log->log (tr ("<b>TEA %1</b> by Peter Semiletov | tea.ourproject.org<br>Support TEA on www.patreon.com/semiletov<br>Git: github.com/psemiletov/tea-qt<br>AUR: aur.archlinux.org/packages/tea-qt-git").arg (QString (current_version_number)));
+  log->log (tr ("<b>TEA %1</b> by Peter Semiletov | tea.ourproject.org<br>Support TEA via PayPal: peter.semiletov@gmail.com<br>Git: github.com/psemiletov/tea-qt<br>AUR: aur.archlinux.org/packages/tea-qt-git").arg (QString (current_version_number)));
 
   QTextCursor cr = log->textCursor();
   cr.movePosition (QTextCursor::Start);
@@ -6370,8 +6370,21 @@ void CTEA::create_paths()
   fname_fif = dir_config + "/fif";
   //hs_path["fname_fif"] = fname_fif;
 
-  fname_bookmarks = dir_config + "/tea_bmx";
+  QString old_bmx_file = dir_config + "/tea_bmx";
+  fname_bookmarks = dir_config + "/bookmarks";
   //hs_path["fname_bookmarks"] = fname_bookmarks;
+
+  if (file_exists (old_bmx_file))
+     {
+      QString file_content = qstring_load (old_bmx_file);
+      file_content = file_content.replace (",", "*");
+      qstring_save (fname_bookmarks, file_content);
+
+      QFile f (old_bmx_file);
+      f.rename (old_bmx_file + ".bak");
+     }
+
+
 
   fname_programs = dir_config + "/programs";
   //hs_path["fname_programs"] = fname_programs;
@@ -7830,8 +7843,16 @@ OPTIONS::FUNCTIONS
 
   page_functions_layout->addWidget (gb_func_misc);
 
+  cb_show_ebooks_fine = new QCheckBox (tr ("Show ebooks fine"), tab_options);
+  cb_show_ebooks_fine->setChecked (settings->value ("show_ebooks_fine", "0").toBool());
+
+  vb_func_misc->addWidget (cb_show_ebooks_fine);
+
+
   page_functions->setLayout (page_functions_layout);
   page_functions->show();
+
+
 
   QScrollArea *scra_functions = new QScrollArea;
   scra_functions->setWidgetResizable (true);
@@ -9507,6 +9528,9 @@ void CTEA::leaving_options()
   settings->setValue ("output_image_fmt", cmb_output_image_fmt->currentText());
   settings->setValue ("img_filter", cb_output_image_flt->isChecked());
   settings->setValue("fuzzy_q", spb_fuzzy_q->value());
+
+  settings->setValue ("show_ebooks_fine", cb_show_ebooks_fine->isChecked());
+
   settings->setValue("img_quality", spb_img_quality->value());
   settings->setValue ("img_post_proc", cb_zip_after_scale->isChecked());
   settings->setValue ("cb_exif_rotate", cb_exif_rotate->isChecked());

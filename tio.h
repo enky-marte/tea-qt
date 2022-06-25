@@ -43,6 +43,7 @@ class CTio: public QObject
 public:
 
   bool ronly;
+
   QString data;
   QString charset;
   QString error_string;
@@ -100,7 +101,7 @@ public:
   bool load (const QString &fname);
 };
 
-
+#if QT_VERSION >= 0x050000
 class CTioEpub: public CTioReadOnly
 {
   Q_OBJECT
@@ -110,8 +111,9 @@ public:
   CTioEpub();
   bool load (const QString &fname);
 };
+#endif
 
-
+/*
 class CTioODT: public CTioReadOnly
 {
   Q_OBJECT
@@ -121,7 +123,7 @@ public:
   CTioODT();
   bool load (const QString &fname);
 };
-
+*/
 
 class CTioABW: public CTioReadOnly
 {
@@ -231,9 +233,6 @@ public:
 
 };
 */
-
-
-
 
 
 #endif // TIO_H
