@@ -35,6 +35,7 @@
 #include <QProcess>
 #include <QProxyStyle>
 #include <QToolButton>
+#include <QMainWindow>
 
 #ifdef PRINTER_ENABLE
 #include <QPrinter>
@@ -176,6 +177,8 @@ Variables
   CShortcuts *shortcuts;
   CFMan *fman;
   CImgViewer *img_viewer;
+
+  QTextBrowser md_viewer;
 
   CSpellchecker *spellchecker;
   QStringList spellcheckers;
@@ -384,6 +387,8 @@ Preferences tab :: Interface page UI elements
   QComboBox *cmb_tea_icons;
   QCheckBox *cb_show_linenums;
   QCheckBox *cb_wordwrap;
+  QCheckBox *cb_show_tabs_and_spaces;
+
   QCheckBox *cb_hl_enabled;
   QCheckBox *cb_hl_current_line;
   QCheckBox *cb_hl_brackets;
@@ -691,6 +696,7 @@ Edit menu callbacks
   void ed_copy();
   void ed_paste();
   void ed_cut();
+  void ed_select_all();
   void ed_block_start();
   void ed_block_end();
   void ed_block_copy();
@@ -830,6 +836,13 @@ Fn menu callbacks
   void fn_text_remove_trailing_spaces();
   void fn_text_anagram();
   void fn_text_regexp_match_check();
+
+#if QT_VERSION >= 0x060000
+
+  void fn_math_srt_shift();
+
+#endif
+
   void fn_quotes_to_angle();
   void fn_quotes_curly();
   void fn_quotes_tex_curly();
@@ -943,6 +956,11 @@ View menu callbacks
   void view_toggle_fs();
   void view_stay_on_top();
   void view_darker();
+
+#if QT_VERSION >= 0x051400
+  void view_preview_md();
+#endif
+
 
 /*-----------------------------*/
 

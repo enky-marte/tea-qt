@@ -150,6 +150,10 @@ private:
 
 protected:
 
+  QAction *actCopy;
+  QAction *actCut;
+  QAction *actPaste;
+
   QMimeData* createMimeDataFromSelection() const;
   bool canInsertFromMimeData (const QMimeData *source) const;
   void insertFromMimeData (const QMimeData *source);
@@ -157,6 +161,10 @@ protected:
   void keyPressEvent (QKeyEvent *event);
   void resizeEvent (QResizeEvent *event);
   void wheelEvent (QWheelEvent *e);
+  void contextMenuEvent (QContextMenuEvent *event);
+
+
+  //QMenu* createStandardContextMenu();
 
 public:
 
@@ -205,6 +213,9 @@ public:
 
   QString get() const; //return selected text
   void put (const QString &value); //replace selection or insert text at cursor
+
+  bool has_selection();
+
 
   bool file_open (const QString &fileName, const QString &codec);
   bool file_save_with_name (const QString &fileName, const QString &codec);
@@ -265,6 +276,12 @@ public slots:
   void cb_cursorPositionChanged();
   void updateLineNumberArea (const QRect &, int);
   void slot_selectionChanged();
+
+  void ed_copy();
+  void ed_cut();
+  void ed_paste();
+
+
 };
 
 

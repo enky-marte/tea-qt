@@ -22,6 +22,7 @@ C++/Qt branch started at 08 November 2007
 
 
 
+#include "document.h"
 #include <math.h>
 #include <algorithm>
 #include <iostream>
@@ -293,20 +294,17 @@ CAboutWindow::CAboutWindow()
   QPlainTextEdit *page_code = new QPlainTextEdit();
   QPlainTextEdit *page_thanks = new QPlainTextEdit();
   QPlainTextEdit *page_translators = new QPlainTextEdit();
-//  QPlainTextEdit *page_maintainers = new QPlainTextEdit();
 
   if (sl_t.size() == 3)
      {
       page_code->setPlainText (sl_t[0].trimmed());
       page_thanks->setPlainText (sl_t[2].trimmed());
       page_translators->setPlainText (sl_t[1].trimmed());
-      //page_maintainers->setPlainText (sl_t[2].trimmed());
      }
 
   tw->addTab (page_code, tr ("Code"));
   tw->addTab (page_thanks, tr ("Acknowledgements"));
   tw->addTab (page_translators, tr ("Translations"));
-  //tw->addTab (page_maintainers, tr ("Packages"));
 
   QVBoxLayout *layout = new QVBoxLayout();
 
@@ -475,7 +473,6 @@ void CTEA::dropEvent (QDropEvent *event)
   event->accept();
 }
 
-
 /*
 ===========================
 Main window slots
@@ -602,6 +599,7 @@ void CTEA::read_settings()
   charset = settings->value ("charset", "UTF-8").toString();
   fname_def_palette = settings->value ("fname_def_palette", ":/palettes/TEA").toString();
 
+
   QPoint pos = settings->value ("pos", QPoint (1, 200)).toPoint();
   QSize size = settings->value ("size", QSize (800, 512)).toSize();
 
@@ -610,6 +608,12 @@ void CTEA::read_settings()
 
   resize (size);
   move (pos);
+
+  pos = settings->value ("md_viewer_pos", QPoint (1, 200)).toPoint();
+  size = settings->value ("md_viewer_size", QSize (800, 512)).toSize();
+  md_viewer.resize (size);
+  md_viewer.move (pos);
+
 }
 
 
@@ -631,6 +635,10 @@ void CTEA::write_settings()
   settings->setValue ("show_linenums", cb_show_linenums->isChecked());
   settings->setValue ("fif_at_toolbar", cb_fif_at_toolbar->isChecked());
   settings->setValue ("save_buffers", cb_save_buffers->isChecked());
+
+  settings->setValue ("md_viewer_pos", md_viewer.pos());
+  settings->setValue ("md_viewer_size", md_viewer.size());
+
 
   delete settings;
 }
@@ -1089,6 +1097,7 @@ void CTEA::test()
  qDebug() << s;*/
 
 //  QIconvCodec c;
+
 }
 
 
@@ -1131,6 +1140,11 @@ void CTEA::file_open()
   dialog.setFilter (QDir::AllEntries | QDir::Hidden);
   dialog.setOption (QFileDialog::DontUseNativeDialog, true);
 
+#if QT_VERSION >= 0x050200
+  dialog.setOption (QFileDialog::DontUseCustomDirectoryIcons, true);
+#endif
+
+
   QList<QUrl> sidebarUrls = dialog.sidebarUrls();
   QList<QUrl> sidebarUrls_old = dialog.sidebarUrls();
 
@@ -1170,7 +1184,7 @@ void CTEA::file_open()
   else
       dialog.setDirectory (documents->dir_last);
 
-  dialog.setNameFilter (tr ("All (*);;Text files (*.txt);;Markup files (*.xml *.html *.htm *.);;C/C++ (*.c *.h *.cpp *.hh *.c++ *.h++ *.cxx)"));
+  dialog.setNameFilter (tr ("All (*);;Text files (*.txt);;Markup files (*.xml *.html *.xhtml *.htm *.md);;C/C++ (*.c *.h *.cpp *.hh *.c++ *.h++ *.cxx)"));
 
   QLabel *l = new QLabel (tr ("Charset"));
   QComboBox *cb_codecs = new QComboBox (&dialog);
@@ -1212,6 +1226,8 @@ void CTEA::file_open()
 
 void CTEA::file_open_at_cursor()
 {
+  last_action = sender();
+
   if (main_tab_widget->currentIndex() == idx_tab_fman)
      {
       fman_preview_image();
@@ -1825,6 +1841,17 @@ void CTEA::ed_cut()
   if (d)
       d->cut();
 }
+
+
+void CTEA::ed_select_all()
+{
+  last_action = sender();
+
+  CDocument *d = documents->get_current();
+  if (d)
+      d->selectAll();
+}
+
 
 
 void CTEA::ed_block_start()
@@ -2836,10 +2863,9 @@ void CTEA::search_in_files()
 
        int index = tio->data.indexOf (text_to_search, 0, cs);
        if (index != -1)
-          lresult.append (fname + "," + charset + "," + QString::number (index));
+          lresult.append (fname + "*" + charset + "*" + QString::number (index));
       }
 
-  //pb_status->hide();
   progress_hide();
 
   CTextListWnd *w = new CTextListWnd (tr ("Search results"), tr ("Files"));
@@ -3155,6 +3181,24 @@ void CTEA::view_use_keyboard()
      w->show();
 }
 
+
+#if QT_VERSION >= 0x051400
+
+void CTEA::view_preview_md()
+{
+  last_action = sender();
+
+  CDocument *d = documents->get_current();
+  if (! d)
+     return;
+
+  //qDebug() << d->toPlainText();
+
+  md_viewer.setMarkdown (d->toPlainText());
+  md_viewer.show();
+
+}
+#endif
 
 void CTEA::fn_run_script()
 {
@@ -3960,7 +4004,6 @@ void CTEA::fn_math_sum_by_last_col()
 }
 
 
-
 void CTEA::fn_math_enum()
 {
   last_action = sender();
@@ -4133,6 +4176,61 @@ void CTEA::fn_math_number_dd2dms()
 
   log->log (result);
 }
+
+
+#if QT_VERSION >= 0x060000
+
+void CTEA::fn_math_srt_shift()
+{
+  last_action = sender();
+
+  CDocument *d = documents->get_current();
+  if (! d)
+     return;
+
+  QString s_msecs = fif_get_text();
+  if (s_msecs.isEmpty())
+     return;
+
+  int msecs = s_msecs.toInt();
+
+  QString text = d->get();
+  if (text.isEmpty())
+      return;
+
+  QString output = text;
+
+  QRegularExpression re ("\\d{1,}:\\d{1,}:\\d{1,}(\\,|\\.)\\d{1,}");
+
+  QString format;
+
+  if (d->file_name.endsWith (".sbv"))
+     format = "h:mm:ss.zzz";
+  else
+      format = "hh:mm:ss,zzz";
+
+
+  QRegularExpressionMatchIterator i = re.globalMatch (text);
+  while (i.hasNext())
+        {
+         QRegularExpressionMatch match = i.next();
+         QString t_in (match.captured());
+
+         QTime tm = QTime::fromString (t_in, format);
+
+         if (! tm.isValid())
+            continue;
+
+         tm = tm.addMSecs (msecs);
+
+         QString t_out = tm.toString (format);
+
+         output.replace (t_in, t_out);
+        }
+
+      d->put (output);
+}
+#endif
 
 
 void CTEA::fn_morse_from_ru()
@@ -4548,6 +4646,7 @@ void CTEA::fn_text_regexp_match_check()
 
 #endif
 }
+
 
 
 void CTEA::fn_quotes_to_angle()
@@ -6309,7 +6408,7 @@ void CTEA::handle_args()
   for (int i = 1; i < size; i++)
       {
        QString t = l.at(i);
-       if (t.startsWith("--charset"))
+       if (t.startsWith ("--charset"))
           {
            QStringList pair = t.split ("=");
            if (pair.size() > 1)
@@ -6815,7 +6914,7 @@ File menu
   menu_file = menuBar()->addMenu (tr ("File"));
   menu_file->setTearOffEnabled (true);
 
- // menu_file->addAction (act_test);
+  //menu_file->addAction (act_test);
 
   menu_file->addAction (newAct);
   add_to_menu (menu_file, tr ("Open"), SLOT(file_open()), "Ctrl+O", get_theme_icon_fname ("file-open.png"));
@@ -6889,6 +6988,10 @@ Edit menu
   menu_edit->addAction (cutAct);
   menu_edit->addAction (copyAct);
   menu_edit->addAction (pasteAct);
+
+  menu_edit->addSeparator();
+
+  add_to_menu (menu_edit, tr ("Select all"), SLOT(ed_select_all()));
 
   menu_edit->addSeparator();
 
@@ -7117,6 +7220,11 @@ Functions menu
   add_to_menu (tm, tr ("deg min sec > dec degrees"), SLOT(fn_math_number_dms2dc()));
   add_to_menu (tm, tr ("dec degrees > deg min sec"), SLOT(fn_math_number_dd2dms()));
 
+#if QT_VERSION >= 0x060000
+
+  add_to_menu (tm, tr ("Subtitles: shift timecodes by msecs"), SLOT(fn_math_srt_shift()));
+
+#endif
 
   tm = menu_functions->addMenu (tr ("Morse code"));
   tm->setTearOffEnabled (true);
@@ -7153,7 +7261,6 @@ Functions menu
   add_to_menu (tm, tr ("Reverse"), SLOT(fn_text_reverse()));
   add_to_menu (tm, tr ("Compare two strings"), SLOT(fn_text_compare_two_strings()));
   add_to_menu (tm, tr ("Check regexp match"), SLOT(fn_text_regexp_match_check()));
-
 
   tm = menu_functions->addMenu (tr ("Quotes"));
   tm->setTearOffEnabled (true);
@@ -7340,6 +7447,11 @@ View menu
   menu_view_profiles = menu_view->addMenu (tr ("Profiles"));
   menu_view_profiles->setTearOffEnabled (true);
 
+#if QT_VERSION >= 0x051400
+  add_to_menu (menu_view, tr ("Preview Markdown"), SLOT(view_preview_md()));
+#endif
+
+
   add_to_menu (menu_view, tr ("Save profile"), SLOT(view_profile_save_as()));
   add_to_menu (menu_view, tr ("Toggle word wrap"), SLOT(view_toggle_wrap()));
   add_to_menu (menu_view, tr ("Hide error marks"), SLOT(view_hide_error_marks()));
@@ -7512,6 +7624,11 @@ OPTIONS::INTERFACE
   cb_wordwrap->setChecked (settings->value ("word_wrap", "1").toBool());
   page_interface_layout->addWidget (cb_wordwrap);
 
+  cb_show_tabs_and_spaces = new QCheckBox (tr ("Show tabs and spaces"), tab_options);
+  cb_show_tabs_and_spaces->setChecked (settings->value ("show_tabs_and_spaces", "0").toBool());
+  page_interface_layout->addWidget (cb_show_tabs_and_spaces);
+
+
   cb_hl_enabled = new QCheckBox (tr ("Syntax highlighting enabled"), tab_options);
   cb_hl_enabled->setChecked (settings->value ("hl_enabled", "1").toBool());
   page_interface_layout->addWidget (cb_hl_enabled);
@@ -7633,7 +7750,7 @@ OPTIONS::COMMON
   hb_imgvovr->insertWidget (-1, ed_img_viewer_override, 1, Qt::AlignLeft);
 
   cb_use_trad_dialogs = new QCheckBox (tr ("Use traditional File Save/Open dialogs"), tab_options);
-  cb_use_trad_dialogs->setChecked (settings->value ("use_trad_dialogs", "0").toBool());
+  cb_use_trad_dialogs->setChecked (settings->value ("use_trad_dialogs", "1").toBool());
 
   cb_start_on_sunday = new QCheckBox (tr ("Start week on Sunday"), tab_options);
   cb_start_on_sunday->setChecked (settings->value ("start_week_on_sunday", "0").toBool());
@@ -9052,7 +9169,6 @@ void CTEA::calendar_currentPageChanged (int year, int month)
 }
 
 
-
 void CTEA::process_readyReadStandardOutput()
 {
   QProcess *p = qobject_cast<QProcess *>(sender());
@@ -9479,6 +9595,7 @@ void CTEA::leaving_options()
   settings->setValue ("hl_brackets", cb_hl_brackets->isChecked());
   settings->setValue ("auto_indent", cb_auto_indent->isChecked());
   settings->setValue ("spaces_instead_of_tabs", cb_spaces_instead_of_tabs->isChecked());
+  settings->setValue ("show_tabs_and_spaces", cb_show_tabs_and_spaces->isChecked());
   settings->setValue ("cursor_xy_visible", cb_cursor_xy_visible->isChecked());
   settings->setValue ("tab_sp_width", spb_tab_sp_width->value());
   settings->setValue ("center_on_scroll", cb_center_on_cursor->isChecked());
@@ -9527,11 +9644,11 @@ void CTEA::leaving_options()
   settings->setValue ("label_start", ed_label_start->text());
   settings->setValue ("output_image_fmt", cmb_output_image_fmt->currentText());
   settings->setValue ("img_filter", cb_output_image_flt->isChecked());
-  settings->setValue("fuzzy_q", spb_fuzzy_q->value());
+  settings->setValue ("fuzzy_q", spb_fuzzy_q->value());
 
   settings->setValue ("show_ebooks_fine", cb_show_ebooks_fine->isChecked());
 
-  settings->setValue("img_quality", spb_img_quality->value());
+  settings->setValue ("img_quality", spb_img_quality->value());
   settings->setValue ("img_post_proc", cb_zip_after_scale->isChecked());
   settings->setValue ("cb_exif_rotate", cb_exif_rotate->isChecked());
   settings->setValue ("zor_use_exif_orientation", cb_zor_use_exif->isChecked());

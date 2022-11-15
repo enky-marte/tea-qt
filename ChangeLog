@@ -1,5 +1,21 @@
 //it's lazy updated file, so the real ChangeLog is the activity on github
 
+* 62.0.1 quick fix
++ Edit - Select all
+
+* Qt6 copy text with new lines - fixed
+* Markdown functions - fixes 
+
++ View - Preview Markdown //Qt 5.14+ 
+
++ QT6 only: Functions - Math - Subtitles: shift timecode by msecs 
+            put msecs to FIF. msecs can be negative, i.e "-2000" shifts timecodes by 2000 msecs earlier
+            //works also for Youtube subs
+
++ Options - Interface - Show tabs and spaces
+* find in files FIX
+* TEA theme FIX
+
 - Individual ODT/SXW reader class, the functionality moved to common zipped XML reader
 + Tune - Functions - Misc - Show ebooks fine (adds spaces before each paragraph)
 * old bookmarks file automatically converts to new format

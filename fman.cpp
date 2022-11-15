@@ -26,10 +26,11 @@
 #include <QApplication>
 #include <QDateTime>
 #include <QSettings>
+#include <QMouseEvent>
 
 #include "fman.h"
 #include "utils.h"
-#include "logmemo.h"
+//#include "logmemo.h"
 
 
 extern QSettings *settings;
@@ -387,6 +388,8 @@ void CFMan::mouseMoveEvent (QMouseEvent *event)
 
 void CFMan::keyPressEvent (QKeyEvent *event)
 {
+  //заменить это фуфло на          selectionModel()->setCurrentIndex (indexBelow (currentIndex()), QItemSelectionModel::Rows | QItemSelectionModel::Toggle);
+/*
   if (event->key() == Qt::Key_Insert)
      {
       bool sel = false;
@@ -403,13 +406,27 @@ void CFMan::keyPressEvent (QKeyEvent *event)
       else
           selectionModel()->select (index, QItemSelectionModel::Deselect | QItemSelectionModel::Rows);
 
-
       if (row < mymodel->rowCount() - 1)
          {
           QModelIndex newindex = mymodel->index (++row, 0);
           selectionModel()->setCurrentIndex (newindex, QItemSelectionModel::Current | QItemSelectionModel::Rows);
           scrollTo (newindex);
          }
+
+      event->accept();
+      return;
+     }
+*/
+
+  if (event->key() == Qt::Key_Insert)
+     {
+      if (currentIndex().row() == mymodel->rowCount() - 1)
+         {
+          event->accept();
+          return;
+         }
+
+      selectionModel()->setCurrentIndex (indexBelow (currentIndex()), QItemSelectionModel::Rows | QItemSelectionModel::Toggle);
 
       event->accept();
       return;
@@ -440,7 +457,12 @@ void CFMan::keyPressEvent (QKeyEvent *event)
           return;
          }
 
-      selectionModel()->setCurrentIndex (indexAbove (currentIndex()), QItemSelectionModel::Rows | QItemSelectionModel::NoUpdate);
+
+      if (event->modifiers() & Qt::ShiftModifier)
+         selectionModel()->setCurrentIndex (indexAbove (currentIndex()), QItemSelectionModel::Rows | QItemSelectionModel::Toggle);
+      else
+          selectionModel()->setCurrentIndex (indexAbove (currentIndex()), QItemSelectionModel::Rows | QItemSelectionModel::NoUpdate);
+
       event->accept();
       return;
      }
@@ -454,7 +476,11 @@ void CFMan::keyPressEvent (QKeyEvent *event)
           return;
          }
 
-      selectionModel()->setCurrentIndex (indexBelow(currentIndex()), QItemSelectionModel::Rows | QItemSelectionModel::NoUpdate);
+      if (event->modifiers() & Qt::ShiftModifier)
+         selectionModel()->setCurrentIndex (indexBelow (currentIndex()), QItemSelectionModel::Rows | QItemSelectionModel::Toggle);
+      else
+           selectionModel()->setCurrentIndex (indexBelow(currentIndex()), QItemSelectionModel::Rows | QItemSelectionModel::NoUpdate);
+
       event->accept();
       return;
      }
@@ -485,7 +511,6 @@ void CFMan::keyPressEvent (QKeyEvent *event)
       event->accept();
       return;
      }
-
 
    if (event->key() == Qt::Key_Home)
       {

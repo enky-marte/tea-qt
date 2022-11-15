@@ -50,7 +50,6 @@ code from qwriter:
 #include <QDebug>
 #include <QUrl>
 #include <QDir>
-//#include <QXmlStreamReader>
 #include <QMimeData>
 #include <QFile>
 #include <QMessageBox>
@@ -60,7 +59,6 @@ code from qwriter:
 #include "document.h"
 #include "utils.h"
 #include "gui_utils.h"
-#include "textproc.h"
 
 #include "pugixml.hpp"
 
@@ -693,9 +691,6 @@ bool CXMLHL_walker::for_each (pugi::xml_node &node)
   if (node.type() != pugi::node_element)
       return true;
 
-  //int darker_val = settings->value ("darker_val", 100).toInt();
-
-
 //  std::cout << "for_each name = " << node.name() << std::endl;
 
   QString tag_name = node.name();
@@ -804,7 +799,6 @@ bool CXMLHL_walker::for_each (pugi::xml_node &node)
                 hl->comment_end_expr.first = rg;
                 hl->comment_end_expr.second = true;
                }
-
           }
        else
        if (attr_type == "comment")
@@ -1117,6 +1111,59 @@ void CDocument::keyPressEvent (QKeyEvent *event)
       event->accept();
       return;
      }
+/*
+
+#if QT_VERSION >= 0x050000
+
+  if (event->key() == Qt::Key_C && (event->modifiers().testFlag(Qt::ControlModifier)))
+     {
+      QString t = get();
+
+      if (t.isEmpty())
+         {
+          event->accept();
+          return;
+         }
+
+#if defined(Q_OS_WIN) || defined(Q_OS_OS2)
+      t = t.replace (QChar::ParagraphSeparator, "\r\n");
+#elif defined(Q_OS_UNIX)
+      t = t.replace (QChar::ParagraphSeparator, "\n");
+#endif
+
+      QClipboard *clipboard = QApplication::clipboard();
+
+      clipboard->setText (t);
+
+      event->accept();
+      return;
+     }
+#endif
+*/
+
+
+  if (event->key() == Qt::Key_C && (event->modifiers().testFlag(Qt::ControlModifier)))
+     {
+      ed_copy();
+      event->accept();
+      return;
+     }
+
+
+  if (event->key() == Qt::Key_X && (event->modifiers().testFlag(Qt::ControlModifier)))
+     {
+      ed_cut();
+      event->accept();
+      return;
+     }
+
+  if (event->key() == Qt::Key_V && (event->modifiers().testFlag(Qt::ControlModifier)))
+     {
+      ed_paste();
+      event->accept();
+      return;
+     }
+
 
   QPlainTextEdit::keyPressEvent (event);
 }
@@ -1158,6 +1205,32 @@ void CDocument::wheelEvent (QWheelEvent *e)
 }
 
 
+void CDocument::contextMenuEvent (QContextMenuEvent *event)
+{
+  QMenu *menu = new QMenu (this);
+
+  QAction *a = menu->addAction (tr("Copy"));
+  connect (a, SIGNAL(triggered()), this, SLOT(ed_copy()));
+
+  a = menu->addAction (tr("Cut"));
+  connect (a, SIGNAL(triggered()), this, SLOT(ed_cut()));
+
+  a = menu->addAction (tr("Paste"));
+  connect (a, SIGNAL(triggered()), this, SLOT(ed_paste()));
+
+  menu->addSeparator();
+
+  a = menu->addAction (tr("Undo"));
+  connect (a, SIGNAL(triggered()), this, SLOT(undo()));
+
+  a = menu->addAction (tr("Redo"));
+  connect (a, SIGNAL(triggered()), this, SLOT(redo()));
+
+  menu->exec(event->globalPos());
+  delete menu;
+}
+
+
 CDocument::CDocument (CDox *hldr, QWidget *parent): QPlainTextEdit (parent)
 {
   holder = hldr;
@@ -1178,6 +1251,7 @@ CDocument::CDocument (CDox *hldr, QWidget *parent): QPlainTextEdit (parent)
   tab_sp_width = 8;
   spaces_instead_of_tabs = true;
   highlight_current_line = false;
+  show_tabs_and_spaces = false;
 
 #if defined(Q_OS_WIN) || defined(Q_OS_OS2)
   eol = "\r\n";
@@ -1213,19 +1287,17 @@ CDocument::CDocument (CDox *hldr, QWidget *parent): QPlainTextEdit (parent)
   int tab_index = holder->tab_widget->addTab (this, file_name);
   tab_page = holder->tab_widget->widget (tab_index);
 
- /* show_tabs_and_spaces = true;
 
-  QTextOption option = document()->defaultTextOption();
-  if (show_tabs_and_spaces)
-         option.setFlags(option.flags() | QTextOption::ShowTabsAndSpaces);
-  else
-       option.setFlags(option.flags() & ~QTextOption::ShowTabsAndSpaces);
+  //QAction *actCopy;
+//  QAction *actCut;
+  //QAction *actPaste;
 
-  option.setFlags(option.flags() | QTextOption::AddSpaceForLineAndParagraphSeparators);
-  document()->setDefaultTextOption(option);
+  //actCopy = new QAction (tr("Copy"), this);
+  //connect (actCopy, SIGNAL(triggered()), this, SLOT(ed_copy()));
 
+//   setContextMenuPolicy (Qt::PreventContextMenu);
 
-  ---
+/*
   set dots color, put to hl init
  spaceFormat = QtGui.QTextCharFormat()
         spaceFormat.setForeground(QtCore.Qt.red)
@@ -1267,7 +1339,9 @@ CDocument::~CDocument()
   if (file_name.startsWith (holder->todo.dir_days))
       holder->todo.load_dayfile();
 
-  QMainWindow *w = qobject_cast <QMainWindow *> (holder->parent_wnd);
+//  QMainWindow *w = qobject_cast <QMainWindow *> (holder->parent_wnd);
+  QMainWindow *w = holder->parent_wnd;
+
   w->setWindowTitle ("");
 
   int i = holder->tab_widget->indexOf (tab_page);
@@ -1286,6 +1360,74 @@ void CDocument::put (const QString &value)
 {
   textCursor().insertText (value);
 }
+
+
+void CDocument::ed_copy()
+{
+  if (! has_selection())
+     return;
+
+  QString t = get();
+
+#if defined(Q_OS_UNIX)
+    t = t.replace (QChar::ParagraphSeparator, "\n");
+#endif
+
+#if defined(Q_OS_WIN) || defined(Q_OS_OS2)
+    t = t.replace (QChar::ParagraphSeparator, "\r\n");
+#endif
+
+  QClipboard *clipboard = QApplication::clipboard();
+
+  clipboard->setText (t);
+}
+
+
+void CDocument::ed_cut()
+{
+  if (! has_selection())
+     return;
+
+  QString t = get();
+
+#if defined(Q_OS_UNIX)
+  t = t.replace (QChar::ParagraphSeparator, "\n");
+#endif
+
+#if defined(Q_OS_WIN) || defined(Q_OS_OS2)
+  t = t.replace (QChar::ParagraphSeparator, "\r\n");
+#endif
+
+  QClipboard *clipboard = QApplication::clipboard();
+
+  clipboard->setText (t);
+
+  textCursor().insertText ("");
+}
+
+
+void CDocument::ed_paste()
+{
+  QClipboard *clipboard = QApplication::clipboard();
+  textCursor().insertText (clipboard->text());
+}
+
+
+bool CDocument::has_selection()
+{
+  return textCursor().hasSelection();
+}
+
+/*
+QMenu* CDocument::createStandardContextMenu()
+{
+  QMenu *m = new QMenu();
+
+  m->addAction (actCopy);
+
+  return m;
+}
+*/
 
 
 bool CDocument::file_open (const QString &fileName, const QString &codec)
@@ -1449,15 +1591,30 @@ QString CDocument::get_filename_at_cursor()
 
   QString x;
 
+  QString sep_start;
+  QString sep_end;
+
   if (markup_mode == "LaTeX")
+     {
+      sep_start = "{";
+      sep_end = "}";
+     }
+  else
+  if (markup_mode == "Markdown")
+     {
+      sep_start = "(";
+      sep_end = ")";
+     }
+
+  if (markup_mode == "LaTeX" || markup_mode == "Markdown")
      {
       int pos = textCursor().positionInBlock();
 
-      int end = s.indexOf ("}", pos);
+      int end = s.indexOf (sep_end, pos);
       if (end == -1)
          return x;
 
-      int start = s.lastIndexOf ("{", pos);
+      int start = s.lastIndexOf (sep_start, pos);
       if (start == -1)
          return x;
 
@@ -1597,6 +1754,7 @@ void CDocument::set_hl (bool mode_auto, const QString &theext)
        }
 
 #else
+
    for (vector<pair<QRegExp, QString> >::iterator p = holder->hl_files.begin(); p != holder->hl_files.end(); ++p)
        {
         if (p->first.isValid())
@@ -1669,7 +1827,9 @@ void CDocument::update_title (bool fullname)
   if (! holder->parent_wnd)
      return;
 
-  QMainWindow *w = qobject_cast <QMainWindow *> (holder->parent_wnd);
+ // QMainWindow *w = qobject_cast <QMainWindow *> (holder->parent_wnd);
+
+  QMainWindow *w = holder->parent_wnd;
 
   if (fullname)
       w->setWindowTitle (file_name);
@@ -1829,10 +1989,10 @@ void CDocument::calc_auto_indent()
      {
       for (int i = 0; i < len; i++)
           if (s.at(i) != '\t')
-            {
-             aindent = i;
-             break;
-            }
+             {
+              aindent = i;
+              break;
+             }
      }
 
 
@@ -2718,6 +2878,20 @@ void CDox::apply_settings_single (CDocument *d)
   d->setup_brace_width();
 
   d->set_show_linenums (settings->value ("show_linenums", false).toBool());
+
+  d->show_tabs_and_spaces = settings->value ("show_tabs_and_spaces", false).toBool();
+
+  QTextOption option = d->document()->defaultTextOption();
+  if (d->show_tabs_and_spaces)
+     option.setFlags(option.flags() | QTextOption::ShowTabsAndSpaces);
+  else
+     option.setFlags(option.flags() & ~QTextOption::ShowTabsAndSpaces);
+
+  option.setFlags (option.flags() | QTextOption::AddSpaceForLineAndParagraphSeparators);
+  d->document()->setDefaultTextOption (option);
+
+
+
   d->set_show_margin (settings->value ("show_margin", false).toBool());
   d->set_margin_pos (settings->value ("margin_pos", 72).toInt());
   d->highlight_current_line = settings->value ("additional_hl", false).toBool();

@@ -2,26 +2,32 @@
 
 TEA is a C++, Qt(4,5,6) text editor with the hundreds of features for Linux, *BSD, Mac, Windows, OS/2 and Haiku. 
 
-Home sites >
+Home site > 
 http://tea.ourproject.org
-http://semiletov.org/tea (MIRROR)
 
 Development >
 https://github.com/psemiletov/tea-qt
 
-My hot AUR package > https://aur.archlinux.org/packages/tea-qt-git/
+My hot AUR package > 
+https://aur.archlinux.org/packages/tea-qt-git/
 
 Donate > 
 
 PayPal: peter.semiletov@gmail.com
+
 BTC: 1PCo2zznEGMFJey4qFKGQ8CoFK2nzNnJJf
 
-Or Patreon: https://www.patreon.com/semiletov
+Patreon: https://www.patreon.com/semiletov
+
 
 Communities >
+
 https://t.me/teaqt
+
 https://vk.com/teaeditor
+
 https://www.facebook.com/groups/766324686841748/
+
 
 ## CONTENTS OF THIS README: ##
 
@@ -33,7 +39,7 @@ https://www.facebook.com/groups/766324686841748/
 
 04 - LICENSE NOTES
 
- 
+
 ### 01: INSTALLATION FROM THE SOURCE ###
 
 You can install TEA from the source in 4 ways, using build systems qmake/make, meson/ninja, cmake/make, cmake/ninja. But first, you need to install some development libraries.

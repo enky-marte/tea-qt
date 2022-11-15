@@ -9,11 +9,7 @@ set(CMAKE_AUTORCC ON)
 enable_language(CXX)
 enable_language(C)
 
-#set(CMAKE_CXX_STANDARD 17)
-#set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 find_package(QT NAMES Qt6 Qt5 COMPONENTS Core REQUIRED)
-#find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core REQUIRED)
 
 
 if(Qt${QT_VERSION_MAJOR} STREQUAL "Qt6")
@@ -25,9 +21,7 @@ if(Qt${QT_VERSION_MAJOR} STREQUAL "Qt5")
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core REQUIRED)
 endif()
 
-
 message(Qt${QT_VERSION_MAJOR} " found")
-
 
 include_directories(${Qt${QT_VERSION_MAJOR}Widgets_INCLUDE_DIRS})
 add_definitions(${Qt${QT_VERSION_MAJOR}Widgets_DEFINITIONS})
@@ -35,7 +29,7 @@ add_definitions(${Qt${QT_VERSION_MAJOR}Widgets_COMPILE_DEFINITIONS})
 
 
 set(PROJECT "tea-qt")
-project ($PROJECT VERSION 60.7.0 LANGUAGES CXX C)
+project ($PROJECT VERSION 62.0.1 LANGUAGES CXX C)
 add_definitions(-DVERSION_NUMBER="\\"${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}\\"")
 add_definitions(-DNOCRYPT=1)
 add_definitions(-DNOUNCRYPT=1)
