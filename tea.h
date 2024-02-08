@@ -179,6 +179,7 @@ Variables
   CImgViewer *img_viewer;
 
   QTextBrowser md_viewer;
+  QWidget *wnd_about;
 
   CSpellchecker *spellchecker;
   QStringList spellcheckers;
@@ -785,6 +786,8 @@ Fn menu callbacks
   void fn_insert_time();
   void fn_case_up();
   void fn_case_down();
+  void fn_case_inverse();
+
   void fn_case_cap_sentences();
   void fn_sort_casecare();
   void fn_sort_casecareless();

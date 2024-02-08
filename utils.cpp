@@ -182,6 +182,10 @@ bool qstring_save (const QString &fileName, const QString &data, const char *enc
       return false;
 
   QTextCodec *codec = QTextCodec::codecForName (enc);
+  if (! codec)
+     return false;
+
+
   QByteArray ba = codec->fromUnicode (data);
 
   file.write (ba);
@@ -203,6 +207,9 @@ QString qstring_load (const QString &fileName, const char *enc)
 
   QByteArray ba = file.readAll();
   QTextCodec *codec = QTextCodec::codecForName (enc);
+
+  if (! codec)
+     return QString();
 
   file.close();
 
@@ -373,6 +380,10 @@ bool is_image (const QString &filename)
   for (QList <QByteArray>::iterator i = a.begin(); i != a.end(); ++i)
       {
        QString t (i->data());
+
+       if (t == "pdf") //hack for qt6
+          continue;
+
        if (filename.endsWith (t.prepend ("."), Qt::CaseInsensitive))
           return true;
       }
@@ -412,7 +423,7 @@ QString get_insert_image (const QString &file_name, const QString &full_path, co
       result = QString ("@IncludeGraphic {%1}").arg (dir.relativeFilePath (full_path));
   else
   if (markup_mode == "Markdown")
-      result = QString ("![alt_text]({%1})").arg (dir.relativeFilePath (full_path));
+      result = QString ("![alt_text](%1)").arg (dir.relativeFilePath (full_path));
 
   return result;
 }

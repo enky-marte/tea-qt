@@ -1,4 +1,6 @@
-cmake_minimum_required(VERSION 3.0)
+#cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.21.1)
+
 set (QT_MIN_VERSION "5.4.0")
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -9,27 +11,28 @@ set(CMAKE_AUTORCC ON)
 enable_language(CXX)
 enable_language(C)
 
-find_package(QT NAMES Qt6 Qt5 COMPONENTS Core REQUIRED)
-
-
-if(Qt${QT_VERSION_MAJOR} STREQUAL "Qt6")
-find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Core5Compat REQUIRED)
+find_package(Qt6 COMPONENTS Core Widgets)
+if (NOT Qt6_FOUND)
+    find_package(Qt5 5.15 REQUIRED COMPONENTS Core Widgets)
 endif()
 
 
-if(Qt${QT_VERSION_MAJOR} STREQUAL "Qt5")
-find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core REQUIRED)
+if (Qt6_FOUND)
+message("+ Qt6 found")
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+find_package(Qt6 COMPONENTS Core5Compat REQUIRED)
 endif()
 
-message(Qt${QT_VERSION_MAJOR} " found")
 
-include_directories(${Qt${QT_VERSION_MAJOR}Widgets_INCLUDE_DIRS})
-add_definitions(${Qt${QT_VERSION_MAJOR}Widgets_DEFINITIONS})
-add_definitions(${Qt${QT_VERSION_MAJOR}Widgets_COMPILE_DEFINITIONS})
+#qt_standard_project_setup()
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
 
 
 set(PROJECT "tea-qt")
-project ($PROJECT VERSION 62.0.1 LANGUAGES CXX C)
+project ($PROJECT VERSION 62.2.1 LANGUAGES CXX C)
 add_definitions(-DVERSION_NUMBER="\\"${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}\\"")
 add_definitions(-DNOCRYPT=1)
 add_definitions(-DNOUNCRYPT=1)
@@ -39,6 +42,8 @@ option(USE_ASPELL "Use Aspell" OFF)
 option(USE_PRINTER "Use printer support" OFF)
 option(USE_PDF "Use libpoppler" OFF)
 option(USE_DJVU "Use djvu support" OFF)
+option(USE_MAC "Build for Mac" OFF)
+
 
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
@@ -59,29 +64,9 @@ if(hunspell_FOUND)
 endif()
 
 
-find_package(Qt${QT_VERSION_MAJOR} CONFIG REQUIRED Core Widgets)
+qt_add_resources(QT_RESOURCES resources.qrc)
 
-
-if(BUILD_TESTING)
-  find_package(Qt${Test}${QT_VERSION_MAJOR} CONFIG REQUIRED)
-endif()
-
-
-if(Qt${QT_VERSION_MAJOR} STREQUAL "Qt6")
-qt6_add_resources(QT_RESOURCES resources.qrc)
-endif()
-
-if (Qt${QT_VERSION_MAJOR} MATCHES "Qt5")
-qt5_add_resources(QT_RESOURCES resources.qrc)
-endif()
-
-
-#qt6_add_resources(QT_RESOURCES resources.qrc)
-#Qt${QT_VERSION_MAJOR}_add_resources(QT_RESOURCES resources.qrc)
-
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${Qt${QT_VERSION_MAJOR}Widgets_EXECUTABLE_COMPILE_FLAGS}")
-
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${QtWidgets_EXECUTABLE_COMPILE_FLAGS}")
 
 file(GLOB tea_SRCS "*.c" "*.cpp")
 file(GLOB tea_HEADERS "*.h" ".*hpp")
@@ -114,12 +99,6 @@ set(tea_DESKTOP
     ./desktop/tea.desktop
 )
 
-
-#add_custom_target(dist
-#COMMAND git archive --prefix=${PROJECT}-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}/ master | bzip2 >${PROJECT}-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}.tar.bz2
-#WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-#)
-
 add_custom_target(dist
 COMMAND git archive --format=tar --prefix=${PROJECT}-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}/ HEAD | gzip >${PROJECT}-${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}.tar.gz
 WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
@@ -128,13 +107,22 @@ WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
 
 add_executable(tea ${tea_SRCS} ${QT_RESOURCES})
 
+#if (USE_MAC)
+#set_target_properties(tea PROPERTIES MACOSX_BUNDLE TRUE)
+#endif()
+
+set_target_properties(tea PROPERTIES
+    WIN32_EXECUTABLE ON
+    MACOSX_BUNDLE ON
+)
+
 
 if(USE_PRINTER)
-find_package(Qt${QT_VERSION_MAJOR}PrintSupport)
-if (Qt${PrintSupport}_FOUND)
+find_package(QtPrintSupport)
+if (Qt6_FOUND)
    Message ("+ printer support")
    add_definitions(-DPRINTER_ENABLE)
-   target_link_libraries(tea Qt${QT_VERSION_MAJOR}::PrintSupport)
+   target_link_libraries(tea Qt::PrintSupport)
 endif()
 endif()
 
@@ -172,25 +160,47 @@ endif()
 if(USE_PDF)
 find_package(PkgConfig)
 
-if(Qt${QT_VERSION_MAJOR} STREQUAL "Qt5")
+
+if (NOT Qt6_FOUND)
 pkg_check_modules(popplerqt5 QUIET poppler-qt5)
 if(popplerqt5_FOUND)
   add_definitions(-DPOPPLER_ENABLE)
   target_link_libraries(tea ${popplerqt5_LIBRARIES})
   include_directories(${popplerqt5_INCLUDE_DIRS})
-  message("+ poppler support")
+  message("+ popplerqt5 support")
 endif()
 endif()
 
-if(Qt${QT_VERSION_MAJOR} STREQUAL "Qt6")
+#if (Qt6_FOUND)
+#pkg_check_modules(popplerqt6 QUIET poppler-qt6)
+#if(popplerqt6_FOUND)
+#  add_definitions(-DPOPPLER_ENABLE)
+#  target_link_libraries(tea ${popplerqt6_LIBRARIES})
+#  include_directories(${popplerqt6_INCLUDE_DIRS})
+#  message("+ popplerqt6 support")
+#endif()
+#endif()
+
+
+if (Qt6_FOUND)
+
+#find_package(Qt6 REQUIRED COMPONENTS Pdf)
+#if (Qt6::Pdf_FOUND)
+#  add_definitions(-DPDF6)
+#  target_link_libraries(tea Qt6::Pdf)
+#  message("+ Qt 6.6 PDF support")
+
+#else()
+
 pkg_check_modules(popplerqt6 QUIET poppler-qt6)
 if(popplerqt6_FOUND)
   add_definitions(-DPOPPLER_ENABLE)
   target_link_libraries(tea ${popplerqt6_LIBRARIES})
   include_directories(${popplerqt6_INCLUDE_DIRS})
-  message("+ poppler support")
+  message("+ popplerqt6 support")
 endif()
 endif()
+
 
 endif()
 
@@ -228,14 +238,12 @@ if(hunspell_FOUND)
 endif()
 
 
-if(Qt${QT_VERSION_MAJOR} STREQUAL "Qt6")
-   target_link_libraries(tea Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Core Qt6::Core5Compat)
+if (Qt6_FOUND)
+target_link_libraries(tea Qt::Core5Compat)
 endif()
 
+target_link_libraries(tea Qt::Widgets Qt::Core)
 
-if(Qt${QT_VERSION_MAJOR} STREQUAL "Qt5")
-target_link_libraries(tea Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Core)
-endif()
 
 
 install (TARGETS tea DESTINATION bin)

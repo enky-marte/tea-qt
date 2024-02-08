@@ -1,5 +1,5 @@
 /***************************************************************************
- *   2000-2022 by Peter Semiletov                                          *
+ *   2000-2023 by Peter Semiletov                                          *
  *   peter.semiletov@gmail.com                                             *
 
 C++/Qt branch started at 08 November 2007
@@ -278,7 +278,7 @@ void CAboutWindow::update_image()
 
 CAboutWindow::CAboutWindow()
 {
-  setAttribute (Qt::WA_DeleteOnClose);
+ // setAttribute (Qt::WA_DeleteOnClose);
 
   QStringList sl_t = qstring_load (":/AUTHORS").split ("##");
 
@@ -428,6 +428,12 @@ void CTEA::closeEvent (QCloseEvent *event)
 
   delete documents;
   delete img_viewer;
+
+  if (wnd_about)
+     {
+      wnd_about->close();
+      delete wnd_about;
+    }
 
 #if defined (HUNSPELL_ENABLE) || defined (ASPELL_ENABLE)
   delete spellchecker;
@@ -599,7 +605,6 @@ void CTEA::read_settings()
   charset = settings->value ("charset", "UTF-8").toString();
   fname_def_palette = settings->value ("fname_def_palette", ":/palettes/TEA").toString();
 
-
   QPoint pos = settings->value ("pos", QPoint (1, 200)).toPoint();
   QSize size = settings->value ("size", QSize (800, 512)).toSize();
 
@@ -613,7 +618,6 @@ void CTEA::read_settings()
   size = settings->value ("md_viewer_size", QSize (800, 512)).toSize();
   md_viewer.resize (size);
   md_viewer.move (pos);
-
 }
 
 
@@ -635,10 +639,8 @@ void CTEA::write_settings()
   settings->setValue ("show_linenums", cb_show_linenums->isChecked());
   settings->setValue ("fif_at_toolbar", cb_fif_at_toolbar->isChecked());
   settings->setValue ("save_buffers", cb_save_buffers->isChecked());
-
   settings->setValue ("md_viewer_pos", md_viewer.pos());
   settings->setValue ("md_viewer_size", md_viewer.size());
-
 
   delete settings;
 }
@@ -1113,7 +1115,7 @@ void CTEA::file_open()
 {
   last_action = sender();
 
-  if (! settings->value ("use_trad_dialogs", "0").toBool())
+  if (! settings->value ("use_trad_dialogs", "1").toBool())
      {
       CDocument *d = documents->get_current();
 
@@ -1379,7 +1381,7 @@ bool CTEA::file_save_as()
   if (! d)
      return false;
 
-  if (! settings->value ("use_trad_dialogs", "0").toBool())
+  if (! settings->value ("use_trad_dialogs", "1").toBool())
      {
       main_tab_widget->setCurrentIndex (idx_tab_fman);
       fm_entry_mode = FM_ENTRY_MODE_SAVE;
@@ -1426,7 +1428,6 @@ bool CTEA::file_save_as()
 
   for (int i = 0; i < volumes2.size(); i++)
       sidebarUrls.append (QUrl::fromLocalFile ("/media/" + volumes2.at(i)));
-
 
 #endif
 
@@ -3423,6 +3424,32 @@ void CTEA::fn_case_down()
 }
 
 
+void CTEA::fn_case_inverse()
+{
+  last_action = sender();
+
+  CDocument *d = documents->get_current();
+  if (! d)
+      return;
+
+  if (! d->has_selection())
+     return;
+
+  QString s = d->get();
+
+  for (int i = 0; i < s.size(); i++)
+      {
+       if (s[i].isUpper())
+          s[i] = s[i].toLower();
+       else
+           s[i] = s[i].toUpper();
+
+      }
+
+      d->put (s);
+}
+
+
 void CTEA::fn_case_cap_sentences()
 {
   last_action = sender();
@@ -4753,6 +4780,12 @@ void CTEA::fn_spell_check()
 {
   last_action = sender();
 
+  if (spellchecker->modules_list.size() == 0)
+     {
+      QMessageBox::about (0, "!", QObject::tr ("Please set up spell checker dictionaries at\n Options - Functions page"));
+      return;
+     }
+
   CDocument *d = documents->get_current();
   if (! d)
      return;
@@ -4846,6 +4879,12 @@ void CTEA::fn_spell_add_to_dict()
 {
   last_action = sender();
 
+  if (spellchecker->modules_list.size() == 0)
+     {
+      QMessageBox::about (0, "!", QObject::tr ("Please set up spell checker dictionaries at\n Options - Functions page"));
+      return;
+     }
+
   CDocument *d = documents->get_current();
   if (! d)
      return;
@@ -4860,6 +4899,13 @@ void CTEA::fn_spell_remove_from_dict()
 {
   last_action = qobject_cast<QAction *>(sender());
 
+  if (spellchecker->modules_list.size() == 0)
+     {
+      QMessageBox::about (0, "!", QObject::tr ("Please set up spell checker dictionaries at\n Options - Functions page"));
+      return;
+     }
+
+
   CDocument *d = documents->get_current();
   if (! d)
      return;
@@ -4873,6 +4919,13 @@ void CTEA::fn_spell_remove_from_dict()
 void CTEA::fn_spell_suggest_callback()
 {
   last_action = sender();
+
+  if (spellchecker->modules_list.size() == 0)
+     {
+      QMessageBox::about (0, "!", QObject::tr ("Please set up spell checker dictionaries at\n Options - Functions page"));
+      return;
+     }
+
 
   CDocument *d = documents->get_current();
   if (! d)
@@ -6148,9 +6201,12 @@ void CTEA::view_darker()
 
 void CTEA::help_show_about()
 {
-  CAboutWindow *a = new CAboutWindow();
-  a->move (x() + 20, y() + 20);
-  a->show();
+  //CAboutWindow *a = new CAboutWindow();
+  if (! wnd_about)
+     wnd_about = new CAboutWindow();
+
+  wnd_about->move (x() + 20, y() + 20);
+  wnd_about->show();
 }
 
 
@@ -6199,6 +6255,7 @@ Application stuff inits and updates
 
 CTEA::CTEA()
 {
+  wnd_about = 0;
   mainSplitter = 0;
   ui_update = true;
   boring = false;
@@ -6911,6 +6968,10 @@ File menu
 ===================
 */
 
+#if QT_VERSION < 0x050000
+  QApplication::instance()->setAttribute(Qt::AA_DontUseNativeMenuBar);
+#endif
+
   menu_file = menuBar()->addMenu (tr ("File"));
   menu_file->setTearOffEnabled (true);
 
@@ -7169,6 +7230,8 @@ Functions menu
 
   add_to_menu (tm, tr ("UPCASE"), SLOT(fn_case_up()),"Ctrl+Up");
   add_to_menu (tm, tr ("lower case"), SLOT(fn_case_down()),"Ctrl+Down");
+  add_to_menu (tm, tr ("Case inverse"), SLOT(fn_case_inverse()));
+
   add_to_menu (tm, tr ("Capitalize sentences"), SLOT(fn_case_cap_sentences()));
 
 
@@ -8482,7 +8545,7 @@ void CTEA::create_markup_hash()
   h9["HTML"] = "<a href=\"\">%s</a>";
   h9["XHTML"] = "<a href=\"\">%s</a>";
   h9["LaTeX"] = "\\href{}{%s}";
-  h9["Markdown"] = "[](%s)";
+  h9["Markdown"] = "[%s]()";
 
   hash_markup.insert ("link", h9);
 
